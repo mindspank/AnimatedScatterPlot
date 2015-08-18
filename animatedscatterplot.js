@@ -37,6 +37,14 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular", "te
                 sorting: {
                     uses: "sorting"
                 },
+                addons: {
+                    uses: "addons",
+                    items: {
+                        dataHandling: {
+                            uses: "dataHandling"
+                        }
+                    }
+                },
                 settings: {
                     uses: "settings"
                 }
