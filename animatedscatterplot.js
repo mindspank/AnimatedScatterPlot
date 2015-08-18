@@ -14,7 +14,7 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular", "te
     $("<script>").html(drag).appendTo("head");
     return {
         initialProperties: {
-            version: 1.0,
+            version: 1,
 			qHyperCubeDef: {
 				qSuppressZero: true,
 				qSuppressMissing: true
@@ -140,13 +140,6 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular", "te
                 .attr('class', 'y axis')
                 .call(yAxis);
 
-            var label = svg.append('text')
-                .attr('class', 'label')
-                .attr('text-anchor', 'end')
-                .attr('y', height - 24)
-                .attr('x', width)
-                .text(layout.qHyperCube.qDataPages[0].qMatrix[0][1].qText);
-
             var columns = layout.qHyperCube.qSize.qcx, totalheight = layout.qHyperCube.qSize.qcy;
             var pageheight = Math.floor(10000 / columns);
 
@@ -198,7 +191,14 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular", "te
                                                 
                 var minTime = d3.min(data[0].time);
                 var bisect = d3.bisector(function (d) { return d[0]; });
-                
+            
+                var label = svg.append('text')
+                    .attr('class', 'label')
+                    .attr('text-anchor', 'end')
+                    .attr('y', height - 24)
+                    .attr('x', width)
+                    .text(timedimension[0]);
+                                
                 var dot = svg.append("g")
                     .attr("class", "dots")
                     .selectAll(".dot")
