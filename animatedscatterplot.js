@@ -174,20 +174,20 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular", "te
                 var randomId = 'slider' + Math.floor(Math.random() * 100);
                 var dom = [
                     '<fieldset class="animatedset"><label for="' + randomId +  '">' + timedimension[0] + '</label>',
-                    '<input type="range" max="' + (layout.qHyperCube.qDimensionInfo[1].qCardinal - 1) + '" min="0" step="1" value="0" id="' + randomId +  '" name="'+ randomId +'"</input>',
+                    '<input type="range" max="' + (timedimension.length - 1) + '" min="0" step="1" value="0" id="' + randomId +  '" name="'+ randomId +'"</input>',
                     '<em id="rangeValLabel" style="font-style: normal;"></em>',
                     '</fieldset>'
                 ].join('\n');
                 
                 $element.append(dom);
-                
+                console.log(timedimension)
                 $('#' + randomId).css({
                     width: $element.width() - 40 + 'px',
                 })
                 .addClass('rangeslider')
                 .on('input', function(e) {
                     displayYear(timedimension[this.value])
-                })         
+                });
                                                 
                 var minTime = d3.min(data[0].time);
                 var bisect = d3.bisector(function (d) { return d[0]; });
