@@ -1,0 +1,40 @@
+.animatedscatter .rect {
+    border: solid 1px #ccc;
+    shape-rendering: crispEdges;
+    opacity: 1;
+}
+
+.animatedscatter .rect .active {
+    opacity: 1;
+}
+
+.animatedscatter .x.label, .animatedscatter .y.label {
+    font-size: 10px;
+    fill: #777;
+}
+
+.animatedscatter .axis path,
+.animatedscatter .axis line {
+    fill: none;
+    stroke: #ccc;
+    shape-rendering: crispEdges;
+}
+
+.animatedscatter .label {
+    font: 500 130px "Helvetica Neue";
+    fill: #ddd;
+}
+
+.animatedscatter > label {
+    position: relative;
+    top: -6px;
+}
+
+.animatedset {
+    border: 0;
+}
+
+.animatedset label {
+    position: relative;
+    top: -6px;
+}

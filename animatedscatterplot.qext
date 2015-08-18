@@ -1,0 +1,9 @@
+{
+	"name" : "Animated Scatter Plot",
+	"description" : "Allows you to animate a scatter plot.",
+	"icon" : "scatter-chart",
+	"type" : "visualization",
+	"version": "1.0",
+	"preview" : "scatter-chart",
+	"author": "Alexander Karlsson - Developer Relations - akl@qlik.com"
+}
