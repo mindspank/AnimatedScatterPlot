@@ -1,17 +1,24 @@
-define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], function ($, d3, css, qv) {
+requirejs.config({
+    paths: {
+        "d3": "../extensions/animatedscatterplot/d3.min",
+        "dragit": "../extensions/animatedscatterplot/dragit"
+    },
+    "shim": {
+        "dragit": ["d3"]
+    }
+});
+
+define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular", "text!./dragit.js"], function ($, d3, css, qv, drag) {
     'use strict';
     $("<style>").html(css).appendTo("head");
+    $("<script>").html(drag).appendTo("head");
     return {
         initialProperties: {
             version: 1.0,
-            qHyperCubeDef: {
-                qDimensions: [],
-                qMeasures: [],
-                qInitialDataFetch: [{
-                    qWidth: 5,
-                    qHeight: 1
-                }]
-            }
+			qHyperCubeDef: {
+				qSuppressZero: true,
+				qSuppressMissing: true
+			}
         },
         definition: {
             type: "items",
@@ -41,15 +48,18 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
         paint: function ($element, layout) {
 
             $element.empty();
+            this.backendApi.cacheCube.enabled = false;
+            
             //Can't be bothered to bind().
             var that = this;
             
             var timedimension = [];
-            
+            console.log(layout)
+                                    
             // Dimensions
             var margin = {
                 top: 19.5,
-                right: 19.5,
+                right: 26,
                 bottom: 19.5,
                 left: 39.5
             };
@@ -90,7 +100,16 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
                 .attr('width', width + margin.left + margin.right)
                 .attr('height', height + margin.top + margin.bottom)
                 .append('g')
-                .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+                .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
+                .attr("class", "gRoot");
+ 
+            // Add the country label; the value is set on transition.
+            var countrylabel = svg.append("text")
+                .attr("class", "country label")
+                .attr("text-anchor", "start")
+                .attr("y", 80)
+                .attr("x", 20)
+                .text(" ");
                 
             // Add an x-axis label.
             svg.append("text")
@@ -128,8 +147,6 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
                 .attr('x', width)
                 .text(layout.qHyperCube.qDataPages[0].qMatrix[0][1].qText);
 
-            this.backendApi.cacheCube.enabled = false;
-
             var columns = layout.qHyperCube.qSize.qcx, totalheight = layout.qHyperCube.qSize.qcy;
             var pageheight = Math.floor(10000 / columns);
 
@@ -162,14 +179,12 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
                 function timedim(d) { return d.time; }
                 
                 var randomId = 'slider' + Math.floor(Math.random() * 100);
-                console.log(randomId)
                 var dom = [
                     '<fieldset class="animatedset"><label for="' + randomId +  '">' + timedimension[0] + '</label>',
-                    '<input type="range" max="' + (layout.qHyperCube.qDimensionInfo[1].qCardinal - 2) + '" min="0" step="1" value="0" id="' + randomId +  '" name="'+ randomId +'"</input>',
+                    '<input type="range" max="' + (layout.qHyperCube.qDimensionInfo[1].qCardinal - 1) + '" min="0" step="1" value="0" id="' + randomId +  '" name="'+ randomId +'"</input>',
                     '<em id="rangeValLabel" style="font-style: normal;"></em>',
                     '</fieldset>'
                 ].join('\n');
-                            
                 
                 $element.append(dom);
                 
@@ -192,15 +207,32 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
                     .attr("class", "dot")
                     .style("fill", function (d) { return colorScale(color(d)); })
                     .call(position)
-                    .sort(order);
+                    .sort(order)
+                    .on('mousedown', function() {
+                        return;
+                    })
+                    .on("mouseenter", function(d, i) {
+                        dragit.trajectory.display(d, d.idx)
+                        countrylabel.text(d.name);
+                        dot.style("opacity", .4)
+                        d3.select(this).style("opacity", 1)
+                        d3.selectAll(".selected").style("opacity", 1)
+                    })
+                    .on('click', function(d) {
+                        d3.select(this).classed("selected", !d3.select(this).classed("selected"));
+                        that.selectValues(0, [+d.elem], true);
+                    })
+                    .on("mouseleave", function(d, i) {
+                        console.log('mouseleave')
+                        countrylabel.text("");
+                        dot.style("opacity", 1);
+                        dragit.statemachine.setState('idle');
+                        dragit.trajectory.remove(d, d.idx);
+                    })
+                    .call(dragit.object.activate);
 
-                    // Add a title.
-                    dot.append("title")
-                        .text(function (d) {
-                            return d.name;
-                        });
-                        
-                displayYear(timedimension[0]);
+                // Add a title.
+                dot.append("title").text(function (d) { return d.name; });
                         
                 function position(dot) {
                     dot.attr("cx", function (d) { return xScale(x(d)); })
@@ -216,19 +248,14 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
                  function displayYear(time) {
                     dot.data(interpolateData(time), key).call(position).sort(order);
                     label.text(time);
-                }
-                
-                function tweenYear() {
-                    var year = d3.interpolateNumber(timedimension[0], timedimension[timedimension.length]);
-                    return function (t) { displayYear(year(t)); };
                 };
-
-                // Interpolates the dataset for the given (fractional) year.
+                
                 function interpolateData(year) {
-                    return data.map(function (d) {
-                        
+                    return data.map(function (d, i) {
                         var obj = {
                             name: d.name,
+                            idx: i,
+                            elem: d.elem,
                             cat: d.cat,
                             x: interpolateValues(d.x, year),
                             y: interpolateValues(d.y, year),
@@ -243,7 +270,6 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
                     });
                 }
 
-                // Finds (and possibly interpolates) the value for the specified year.
                 function interpolateValues(values, year) {
                     var i = bisect.left(values, year, 0, values.length - 1),
                         a = values[i];
@@ -253,7 +279,24 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
                         return a[1] * (1 - t) + b[1] * t;
                     }
                     return a[1];
-                }               
+                };
+                                                
+                function init() {
+                
+                    dragit.init(".gRoot");
+                
+                    dragit.time = {min:timedimension[0], max: timedimension[timedimension.length-1], step:1, current:timedimension[0]}
+                    dragit.data = d3.range(data.length).map(function() { return Array(); })
+                                
+                    for(var yy = timedimension[0]; yy < timedimension[timedimension.length-1]; yy++) {
+                        interpolateData(yy).filter(function(d, i) {
+                            dragit.data[i][yy-dragit.time.min] = [xScale(x(d)), yScale(y(d))];
+                        });
+                    };
+                                                    
+                };
+                
+                init();                
                  
             };
 
@@ -268,7 +311,6 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
                         }
                     });
                 });
-                
                 layout = null;
 
                 var jsonData = [];
@@ -282,7 +324,7 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
                     var colorCategory = 1;
                     var x = data[i][2].qNum;
                     var y = data[i][3].qNum;
-                    var size, sizeArray = []
+                    var size, sizeArray = [], qelem = data[i][0].qElemNumber;
                     
                     if( useColor ) {
                         colorCategory = data[i][2].qText;
@@ -311,7 +353,7 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
                     if (prevDimension != dimension) {
                         // Create a new node
                         counter++;
-                        jsonData[counter] = { name: dimension, cat: colorCategory, time: [], x: [], y: [] };
+                        jsonData[counter] = { name: dimension, elem: qelem, cat: colorCategory, time: [], x: [], y: [] };
                         jsonData[counter].time[0] = time;
                         jsonData[counter].x[0] = xArray;
                         
