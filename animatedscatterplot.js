@@ -329,9 +329,9 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
 
                         var timer;
                         if( layout.animatedscatterplot.useduration ) {
-                            timer = layout.animatedscatterplot.duration * (maxValue - timedimension[0]);
+                            timer = layout.animatedscatterplot.duration * (maxValue - currentValue);
                         } else {
-                            timer = (maxValue - currentValue) / (maxValue - timedimension[0]) * 10000;
+                            timer =  200 * (maxValue - currentValue);
                         };
                         
                         slider.transition()
