@@ -80,13 +80,13 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
             this.backendApi.cacheCube.enabled = false;
             
             $('<button class="g-play-button">Play</button>').appendTo($element);
-             
+                         
             //Can't be bothered to bind().
             var that = this;
             
             var timedimension = [];
             var dot;
-            
+
             function x(d) { return +d.x; };
             function y(d) { return +d.y; };
             function radius(d) { return +d.size; };
@@ -94,11 +94,10 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
             function key(d) { return d.name; };
             function timedim(d) { return d.time; };
             var bisect = d3.bisector(function (d) { return d[0]; });
-            
+                      
             //Slider stuff
             var slider, handle, brushHeight = 40, playing = false, $play = $element.find('button'), currentValue, value; 
          
-                                    
             // Dimensions
             var margin = {
                 top: 10,
@@ -118,7 +117,6 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
             // Color dimension and size measure
             var useColor = layout.qHyperCube.qDimensionInfo.length === 3 ? true : false;
             var useSize = layout.qHyperCube.qMeasureInfo.length === 3 ? true : false;
-            
             
             // Scales
             var xScale = d3.scale.linear().domain([minX, maxX]).range([0, width]);
@@ -230,6 +228,9 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
                         d3.select(this).classed("selected", !d3.select(this).classed("selected"));
                         that.selectValues(0, [+d.elem], true);
                     });
+                    
+                dot.append("svg:title")
+                    .text(function(d, i) { return d.name; });
                                                               
                 var xSlideScale = d3.scale.linear()
                     .range([0, width - 100])
@@ -473,4 +474,5 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
 
         }
     };
+    
 });
