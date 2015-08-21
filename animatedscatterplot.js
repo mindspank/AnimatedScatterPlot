@@ -1,4 +1,4 @@
-define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular", "text!./d3.slider.js"], function ($, d3, css, qv, slider) {
+define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], function ($, d3, css, qv) {
     'use strict';
     $("<style>").html(css).appendTo("head");
     return {
