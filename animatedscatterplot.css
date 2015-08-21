@@ -39,78 +39,77 @@
     border: 0;
 }
 
+.selected {
+  stroke-width: 5px !important;
+}
+
 .animatedset label {
     position: relative;
     top: -6px;
 }
 
-circle.pointTrajectory {
-   pointer-events: none;
-   stroke: lightgray;
-   fill: black;
-   opacity: 0;
+.g-graphic {
+  position: relative;
 }
 
-path.lineTrajectory {
-  stroke-width: 2;
-  stroke-opacity: .5;
-  stroke: black;
+.g-play-button {
+  position: absolute;
+  top: 15px;
+  left: 10px;
+  background: #004276;
+  padding-right: 26px;
+  border-radius: 2px;
+  border: none;
+  color: white;
+  margin: 0;
+  padding: 0 12px;
+  width: 68px;
+  cursor: pointer;
+  height: 30px;
+  font: 13px sans-serif;
+}
+
+.g-play-button:hover {
+  background-color: #064d84;
+}
+
+.g-play-button:active {
+  background-color: #002657;
+}
+
+.g-axis {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  fill: #777;
+}
+
+.g-axis .domain {
   fill: none;
+  stroke: #fff;
+  stroke-width: 8px;
+  stroke-linecap: round;
+}
+
+.g-axis .tick line {
+  stroke: #aaa;
+  shape-rendering: crispEdges;
+}
+
+.g-axis .g-halo {
+  fill: none;
+  stroke: #ccc;
+  stroke-width: 10px;
+  stroke-linecap: round;
+}
+
+.g-slider .background {
+  cursor: ew-resize !important;
+}
+
+.g-slider .g-handle {
+  fill: #fff;
+  stroke: #777;
+  stroke-width: 1.0px;
   pointer-events: none;
-}
-
-.selected {
-  stroke-width: 4 !important;
-}
-
-path.lineTrajectory, path.subTrajectory {
-  stroke-width: 2;
-  stroke-opacity: 0.2;
-  opacity: 0.5;
-  fill-opacity: 0.3;
-  stroke: gray;
-  fill: none;
-  pointer-events: none;
-}
-
-path.lineTrajectoryMonotone {
-  stroke-width: 2;                            
-  fill: none;   
-  pointer-events: none;   
-  stroke: lightgray;   
-}
-
-circle.pointTrajectory {
-   pointer-events: none;
-   stroke: lightgray;
-   fill: black;
-   opacity: .5;
-}
-
-line.lineClosestTrajectory {
-  stroke: black;
-  stroke-dasharray: 4,4;
-  display: block;
-}
-
-line.lineClosestPoint {
-  stroke: black;
-  opacity: .1;
-  display: block;
-}
-
-.selected {
-  opacity: .5;
-}
-
-circle.pointClosestTrajectory {
-  opacity: .1;
-  display: block;
-}
-
-circle.focusGuide {
-  opacity: 1;
-  display: block;
-  fill: none;
-  stroke: black;
 }

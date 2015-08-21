@@ -1,17 +1,6 @@
-requirejs.config({
-    paths: {
-        "d3": "../extensions/animatedscatterplot/d3.min",
-        "dragit": "../extensions/animatedscatterplot/dragit"
-    },
-    "shim": {
-        "dragit": ["d3"]
-    }
-});
-
-define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular", "text!./dragit.js"], function ($, d3, css, qv, drag) {
+define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular", "text!./d3.slider.js"], function ($, d3, css, qv, slider) {
     'use strict';
     $("<style>").html(css).appendTo("head");
-    $("<script>").html(drag).appendTo("head");
     return {
         initialProperties: {
             version: 1,
@@ -46,7 +35,39 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular", "te
                     }
                 },
                 settings: {
-                    uses: "settings"
+                    uses: "settings",
+                    items: {
+                        animation: {
+                            type: "items",
+                            label: "Animation",
+                            items: {
+                                useduration: {
+                                    label: "Use custom duration",
+                                    type: "boolean",
+                                    component: "switch",
+                                    options: [{
+                                        label: "Disabled",
+                                        value: false
+                                    }, {
+                                        label: "Enabled",
+                                        value: true
+                                        }],
+                                    ref: "animatedscatterplot.useduration",
+                                    defaultValue: false 
+                                },
+                                duration: {
+                                    ref: "animatedscatterplot.duration",
+                                    label: "Duration (ms) per step",
+                                    type: "number",
+                                    expression: "optional",
+                                    defaultValue: "0",
+                                    show: function (d) {
+                                        return d.animatedscatterplot.useduration;
+                                    }
+                                }
+                            }                            
+                        }
+                    }
                 }
             }
         },
@@ -58,31 +79,46 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular", "te
             $element.empty();
             this.backendApi.cacheCube.enabled = false;
             
+            $('<button class="g-play-button">Play</button>').appendTo($element);
+             
             //Can't be bothered to bind().
             var that = this;
             
             var timedimension = [];
-            console.log(layout)
+            var dot;
+            
+            function x(d) { return +d.x; };
+            function y(d) { return +d.y; };
+            function radius(d) { return +d.size; };
+            function color(d) { return d.cat; };
+            function key(d) { return d.name; };
+            function timedim(d) { return d.time; };
+            var bisect = d3.bisector(function (d) { return d[0]; });
+            
+            //Slider stuff
+            var slider, handle, brushHeight = 40, playing = false, $play = $element.find('button'), currentValue, value; 
+         
                                     
             // Dimensions
             var margin = {
-                top: 19.5,
-                right: 26,
-                bottom: 19.5,
-                left: 39.5
+                top: 10,
+                right: 25,
+                bottom: 50,
+                left: 40
             };
-
+                        
             var minX = +layout.qHyperCube.qMeasureInfo[0].qMin;
             var maxX = +layout.qHyperCube.qMeasureInfo[0].qMax;
             var minY = +layout.qHyperCube.qMeasureInfo[1].qMin;
             var maxY = +layout.qHyperCube.qMeasureInfo[1].qMax;
 
             var width = $element.width() - margin.right - margin.left;
-            var height = ($element.height() - 40) - margin.top - margin.bottom;
+            var height = ($element.height() - brushHeight) - margin.top - margin.bottom;
             
             // Color dimension and size measure
             var useColor = layout.qHyperCube.qDimensionInfo.length === 3 ? true : false;
             var useSize = layout.qHyperCube.qMeasureInfo.length === 3 ? true : false;
+            
             
             // Scales
             var xScale = d3.scale.linear().domain([minX, maxX]).range([0, width]);
@@ -90,11 +126,11 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular", "te
             var colorScale = d3.scale.category10();
             
             // Radius - Controlled by optional measure.
-            var radiusScale = function () { return 5 };
+            var sizeMin, sizeMax, radiusScale = function () { return 5 };
 
             if (useSize) {
-                var sizeMin = +layout.qHyperCube.qMeasureInfo[2].qMin;
-                var sizeMax = +layout.qHyperCube.qMeasureInfo[2].qMax;
+                sizeMin = +layout.qHyperCube.qMeasureInfo[2].qMin;
+                sizeMax = +layout.qHyperCube.qMeasureInfo[2].qMax;
                 radiusScale = d3.scale.sqrt().domain([sizeMin, sizeMax]).range([5, 40]);
             };
               
@@ -102,25 +138,26 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular", "te
             var xAxis = d3.svg.axis().orient('bottom').scale(xScale);
             var yAxis = d3.svg.axis().scale(yScale).orient('left');
             
+            // Slider
+            var svgSlider = d3.select($element.get(0)).append('svg')
+                .attr('class', 'animatedscatter')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', 60)
+              .append('g')
+                .attr('transform', 'translate(110,5)');
+            
             // Container
             var svg = d3.select($element.get(0)).append('svg')
                 .attr('class', 'animatedscatter')
                 .attr('width', width + margin.left + margin.right)
-                .attr('height', height + margin.top + margin.bottom)
-                .append('g')
+                .attr('height', height + margin.top + margin.bottom);
+                
+            var gRoot = svg.append('g')
                 .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
                 .attr("class", "gRoot");
- 
-            // Add the country label; the value is set on transition.
-            var countrylabel = svg.append("text")
-                .attr("class", "country label")
-                .attr("text-anchor", "start")
-                .attr("y", 80)
-                .attr("x", 20)
-                .text(" ");
                 
             // Add an x-axis label.
-            svg.append("text")
+            gRoot.append("text")
                 .attr("class", "x label")
                 .attr("text-anchor", "end")
                 .attr("x", width)
@@ -128,26 +165,30 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular", "te
                 .text(layout.qHyperCube.qMeasureInfo[0].qFallbackTitle);
             
             // Add a y-axis label.
-            svg.append("text")
+            gRoot.append("text")
                 .attr("class", "y label")
                 .attr("text-anchor", "end")
                 .attr("y", 6)
                 .attr("dy", ".75em")
                 .attr("transform", "rotate(-90)")
                 .text(layout.qHyperCube.qMeasureInfo[1].qFallbackTitle);
-                
-                console.log(layout);
+            
+            // Time label
+            var label = gRoot.append('text')
+                .attr('class', 'label')
+                .attr('text-anchor', 'end')
+                .attr('y', height - 24)
+                .attr('x', width)
+                .text('');               
 
             // Add the axes (plural?)
-            svg.append('g')
+            gRoot.append('g')
                 .attr('class', 'x axis')
                 .attr('transform', 'translate(0,' + height + ')')
                 .call(xAxis);
 
-            svg.append('g')
-                .attr('class', 'y axis')
-                .call(yAxis);
-
+            gRoot.append('g').attr('class', 'y axis').call(yAxis);
+            
             var columns = layout.qHyperCube.qSize.qcx, totalheight = layout.qHyperCube.qSize.qcy;
             var pageheight = Math.floor(10000 / columns);
 
@@ -172,92 +213,147 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular", "te
 
             function render(data) {
 
-                function x(d) { return +d.x; }
-                function y(d) { return +d.y; }
-                function radius(d) { return +d.size; }
-                function color(d) { return d.cat; }
-                function key(d) { return d.name; }
-                function timedim(d) { return d.time; }
-                
-                var randomId = 'slider' + Math.floor(Math.random() * 100);
-                var dom = [
-                    '<fieldset class="animatedset"><label for="' + randomId +  '">' + timedimension[0] + '</label>',
-                    '<input type="range" max="' + (timedimension.length - 1) + '" min="0" step="1" value="0" id="' + randomId +  '" name="'+ randomId +'"</input>',
-                    '<em id="rangeValLabel" style="font-style: normal;"></em>',
-                    '</fieldset>'
-                ].join('\n');
-                
-                $element.append(dom);
-                console.log(timedimension)
-                $('#' + randomId).css({
-                    width: $element.width() - 40 + 'px',
-                })
-                .addClass('rangeslider')
-                .on('input', function(e) {
-                    displayYear(timedimension[this.value])
-                });
-                                                
-                var minTime = d3.min(data[0].time);
-                var bisect = d3.bisector(function (d) { return d[0]; });
-            
-                var label = svg.append('text')
-                    .attr('class', 'label')
-                    .attr('text-anchor', 'end')
-                    .attr('y', height - 24)
-                    .attr('x', width)
-                    .text(timedimension[0]);
-                                
-                var dot = svg.append("g")
+                label.text(timedimension[0])
+
+                dot = gRoot.append("g")
                     .attr("class", "dots")
                     .selectAll(".dot")
-                    .data(interpolateData(minTime))
+                    .data(interpolateData(timedimension[0]))
                     .enter().append("circle")
                     .attr("class", "dot")
+                    .style("cursor", "pointer")
                     .style("fill", function (d) { return colorScale(color(d)); })
-                    .call(position)
-                    .sort(order)
                     .on('mousedown', function() {
                         return;
-                    })
-                    .on("mouseenter", function(d, i) {
-                        dragit.trajectory.display(d, d.idx)
-                        countrylabel.text(d.name);
-                        dot.style("opacity", .4)
-                        d3.select(this).style("opacity", 1)
-                        d3.selectAll(".selected").style("opacity", 1)
                     })
                     .on('click', function(d) {
                         d3.select(this).classed("selected", !d3.select(this).classed("selected"));
                         that.selectValues(0, [+d.elem], true);
-                    })
-                    .on("mouseleave", function(d, i) {
-                        console.log('mouseleave')
-                        countrylabel.text("");
-                        dot.style("opacity", 1);
-                        dragit.statemachine.setState('idle');
-                        dragit.trajectory.remove(d, d.idx);
-                    })
-                    .call(dragit.object.activate);
+                    });
+                                                              
+                var xSlideScale = d3.scale.linear()
+                    .range([0, width - 100])
+                    .domain([timedimension[0], timedimension[timedimension.length-1]])
+                    .clamp(true);
+                                
+                var brush = d3.svg.brush()
+                    .x(xSlideScale)
+                    .extent([timedimension[0], timedimension[0]])
+                    .on("brush", brushed);
+                
+                svgSlider.append("g")
+                    .attr("class", "g-x g-axis")
+                    .attr("transform", "translate(0," + brushHeight / 2 + ")")
+                    .call(d3.svg.axis() 
+                        .scale(xSlideScale)
+                        .orient('bottom')
+                        .tickFormat(d3.format(""))
+                        .tickSize(0)
+                        .tickPadding(12))
+                    .select('.domain')
+                    .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); } )
+                        .attr('class', 'g-halo')
+                  
+                slider = svgSlider.append('g')
+                    .attr('class', 'g-slider')
+                    .call(brush);
+                    
+                slider.selectAll('.extent,.resize').remove();
+                slider.select('.background').attr('height', brushHeight);
+                
+                handle = slider.append('circle')
+                    .attr('class', 'g-handle')
+                    .attr('transform', 'translate(0,' + brushHeight / 2 + ')')
+                    .attr('r', 9);
+                    
+                slider
+                    .call(brush.event)
+                    .call(brush.extent( [timedimension[0],timedimension[0]]) )
+                    .call(brush.event);
 
-                // Add a title.
-                dot.append("title").text(function (d) { return d.name; });
+                function brushed() {
+                  if( d3.event.sourceEvent ) {
+                      
+                     value = xSlideScale.invert(d3.mouse(this)[0]);
+                     currentValue = parseInt(value);
+                      
+                     brush.extent[currentValue,currentValue];
+                     label.text(currentValue)
+                     handle.attr('cx', xSlideScale(currentValue));
+                     dot.data(interpolateData(currentValue), key).call(position).sort(order);                      
+                  
+                  } else {
+                  
+                    if( currentValue == timedimension[timedimension.length-1] ) {
+                        $play.text('Play');
+                    };
+                  
+                    value = brush.extent()[0];
+                    currentValue = parseInt(value);
+ 
+                    brush.extent[currentValue,currentValue];
+                    label.text(currentValue)
+                    handle.attr('cx', xSlideScale(currentValue));
+                    dot.data(interpolateData(currentValue), key).call(position).sort(order);                   
+                    
+                      
+                  }                    
+                };
                         
                 function position(dot) {
-                    dot.attr("cx", function (d) { return xScale(x(d)); })
+                    dot.transition().duration(400).ease('linear')
+                        .attr("cx", function (d) { return xScale(x(d)); })
                         .attr("cy", function (d) { return yScale(y(d)); })
                         .attr("r", function (d) { return radiusScale(radius(d)); });
                 };
+                
+                // Startes transition
+                function play() {
+                    var maxValue = +timedimension[timedimension.length-1];
+                    if (currentValue == maxValue) {
+                        slider.interrupt();
+                        dot.interrupt();                        
+                        playing = false;
+                        
+                        slider.call(brush.extent([currentValue = timedimension[0], currentValue])).call(brush.event);
+                           
+                        play();
+                        return;
+                    };
+                    
+                    if (!playing) {
+
+                        $play.text('Pause');
+                        playing = true;
+
+                        var timer;
+                        if( layout.animatedscatterplot.useduration ) {
+                            timer = layout.animatedscatterplot.duration * (maxValue - timedimension[0]);
+                        } else {
+                            timer = (maxValue - currentValue) / (maxValue - timedimension[0]) * 10000;
+                        };
+                        
+                        slider.transition()
+                            .duration(timer)
+                            .ease('linear')
+                            .call(brush.extent([maxValue,maxValue]))
+                            .call(brush.event);
+                        
+                    } else {
+                        $play.text('Play');
+                        playing = false;
+                        slider.interrupt();
+                        dot.interrupt();
+                    };
+                };
+                
+                $play.on('click', play);
 
                 // Defines a sort order so that the smallest dots are drawn on top.
                 function order(a, b) {
                     return radius(b) - radius(a);
                 };
-                
-                 function displayYear(time) {
-                    dot.data(interpolateData(time), key).call(position).sort(order);
-                    label.text(time);
-                };
-                
+
                 function interpolateData(year) {
                     return data.map(function (d, i) {
                         var obj = {
@@ -276,7 +372,7 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular", "te
                         
                         return obj;
                     });
-                }
+                };
 
                 function interpolateValues(values, year) {
                     var i = bisect.left(values, year, 0, values.length - 1),
@@ -287,24 +383,7 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular", "te
                         return a[1] * (1 - t) + b[1] * t;
                     }
                     return a[1];
-                };
-                                                
-                function init() {
-                
-                    dragit.init(".gRoot");
-                
-                    dragit.time = {min:timedimension[0], max: timedimension[timedimension.length-1], step:1, current:timedimension[0]}
-                    dragit.data = d3.range(data.length).map(function() { return Array(); })
-                                
-                    for(var yy = timedimension[0]; yy < timedimension[timedimension.length-1]; yy++) {
-                        interpolateData(yy).filter(function(d, i) {
-                            dragit.data[i][yy-dragit.time.min] = [xScale(x(d)), yScale(y(d))];
-                        });
-                    };
-                                                    
-                };
-                
-                init();                
+                };         
                  
             };
 
