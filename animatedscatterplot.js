@@ -75,10 +75,9 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
             canTakeSnapshot: true
         },
         paint: function ($element, layout) {
-
             $element.empty();
             this.backendApi.cacheCube.enabled = false;
-            
+
             $('<button class="g-play-button">Play</button>').appendTo($element);
                          
             //Can't be bothered to bind().
@@ -248,9 +247,8 @@ define(["jquery", "./d3.min", "text!./animatedscatterplot.css", "qvangular"], fu
                     .call(d3.svg.axis() 
                         .scale(xSlideScale)
                         .orient('bottom')
-                        .tickFormat(d3.format(",.0f"))
+                        .tickFormat(d3.format(".0f"))
                         .tickSize(0)
-                        .ticks(timedimension.length-1)
                         .tickPadding(12))
                     .select('.domain')
                     .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); } )
